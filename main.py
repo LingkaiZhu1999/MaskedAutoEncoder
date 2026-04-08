@@ -274,9 +274,11 @@ def main_worker(gpu, ngpus_per_node, args):
         optimizer = ZeroRedundancyOptimizer(optimizer_params, 
                     optimizer_class=torch.optim.AdamW, 
                     lr=args.lr, 
+                    betas=(0.9, 0.95),
                     weight_decay=args.weight_decay)
     else:
-        optimizer = torch.optim.AdamW(optimizer_params, lr=args.lr, weight_decay=args.weight_decay)
+        optimizer = torch.optim.AdamW(optimizer_params, lr=args.lr, betas=(0.9, 0.95), 
+                                      weight_decay=args.weight_decay)
     
     # optionally resume from a checkpoint
     if args.resume:
@@ -459,6 +461,10 @@ def train(train_loader, model, optimizer, epoch, device, args):
 
         if i % args.print_freq == 0 and (not args.distributed or (args.distributed and args.rank == 0)):
             progress.display(i + 1)
+
+        if args.distributed:
+            losses.all_reduce()
+            
     return losses.avg, current_lr
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
