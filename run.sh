@@ -91,6 +91,4 @@ srun --ntasks="${WORLD_SIZE}" --ntasks-per-node=1 --kill-on-bad-exit=1 \
       --rank -1 \
       --dist-backend nccl \
       --compile \
-      --bf16 \
-      --use_zero
-  '
+      --bf16 
