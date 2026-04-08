@@ -139,7 +139,11 @@ def main():
 
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
-    args.train_batches = IMAGENET_TRAIN_SAMPLES // args.batch_size
+    # args.batch_size is interpreted as per-node batch in this launch setup.
+    # Compute scheduler steps from the global batch size across all nodes.
+    world_size_for_batch = args.world_size if args.world_size > 0 else 1
+    global_batch_size = args.batch_size * (world_size_for_batch if args.distributed else 1)
+    args.train_batches = IMAGENET_TRAIN_SAMPLES // global_batch_size
     args.total_steps = args.epochs * args.train_batches
 
     use_accel = not args.no_accel and torch.accelerator.is_available()
