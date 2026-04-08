@@ -203,7 +203,7 @@ def main_worker(gpu, ngpus_per_node, args):
         is_main_process = not args.distributed or (args.distributed and args.rank == 0)
     
         if is_main_process:
-            run = wandb.init(project="ViT", config=args)
+            run = wandb.init(project="MAE", config=args)
         else:
             run = None
     # create model
