@@ -139,13 +139,6 @@ def main():
 
     args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
-    # args.batch_size is interpreted as per-node batch in this launch setup.
-    # Compute scheduler steps from the global batch size across all nodes.
-    world_size_for_batch = args.world_size if args.world_size > 0 else 1
-    global_batch_size = args.batch_size * (world_size_for_batch if args.distributed else 1)
-    args.train_batches = IMAGENET_TRAIN_SAMPLES // global_batch_size
-    args.total_steps = args.epochs * args.train_batches
-
     use_accel = not args.no_accel and torch.accelerator.is_available()
 
     if use_accel:
@@ -168,8 +161,23 @@ def main():
         args.world_size = ngpus_per_node * args.world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
+
+        # args.batch_size is interpreted as per-node batch in this launch setup.
+        # Compute scheduler steps from the global batch size across all nodes.
+        world_size_for_batch = args.world_size if args.world_size > 0 else 1
+        global_batch_size = args.batch_size * (world_size_for_batch if args.distributed else 1)
+        args.train_batches = IMAGENET_TRAIN_SAMPLES // global_batch_size
+        args.total_steps = args.epochs * args.train_batches
+
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
     else:
+
+        # args.batch_size is interpreted as per-node batch in this launch setup.
+        # Compute scheduler steps from the global batch size across all nodes.
+        world_size_for_batch = args.world_size if args.world_size > 0 else 1
+        global_batch_size = args.batch_size * (world_size_for_batch if args.distributed else 1)
+        args.train_batches = IMAGENET_TRAIN_SAMPLES // global_batch_size
+        args.total_steps = args.epochs * args.train_batches
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
 
@@ -352,7 +360,7 @@ def main_worker(gpu, ngpus_per_node, args):
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, sampler=train_sampler,
-        drop_last=True, persistent_workers=args.workers > 0)
+        drop_last=True, persistent_workers=False)
 
     for epoch in range(args.start_epoch, args.epochs):
         # if args.distributed:
@@ -448,7 +456,6 @@ def train(train_loader, model, optimizer, epoch, device, args):
 
         losses.update(loss.item(), images.size(0))
 
-        # compute gradient and do SGD step
         optimizer.zero_grad()
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
