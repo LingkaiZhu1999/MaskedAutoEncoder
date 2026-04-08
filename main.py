@@ -265,19 +265,18 @@ def main_worker(gpu, ngpus_per_node, args):
         load_finetune_checkpoint(model, args.finetune_checkpoint, reset_head=args.reset_head)
 
     # define optimizer
-    optimizer_params = configure_trainable_parameters(model, args)
 
     # optimizer = torch.optim.SGD(model.parameters(), args.lr,
     #                             momentum=args.momentum,
     #                             weight_decay=args.weight_decay)
     if args.use_zero:
-        optimizer = ZeroRedundancyOptimizer(optimizer_params, 
+        optimizer = ZeroRedundancyOptimizer(model.parameters(), 
                     optimizer_class=torch.optim.AdamW, 
                     lr=args.lr, 
                     betas=(0.9, 0.95),
                     weight_decay=args.weight_decay)
     else:
-        optimizer = torch.optim.AdamW(optimizer_params, lr=args.lr, betas=(0.9, 0.95), 
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, betas=(0.9, 0.95), 
                                       weight_decay=args.weight_decay)
     
     # optionally resume from a checkpoint
@@ -558,47 +557,6 @@ class ProgressMeter(object):
         num_digits = len(str(num_batches // 1))
         fmt = '{:' + str(num_digits) + 'd}'
         return '[' + fmt + '/' + fmt.format(num_batches) + ']'
-
-def configure_trainable_parameters(model, args):
-    norm_types = (
-        nn.LayerNorm,
-        nn.BatchNorm1d,
-        nn.BatchNorm2d,
-        nn.BatchNorm3d,
-        nn.GroupNorm,
-        nn.InstanceNorm1d,
-        nn.InstanceNorm2d,
-        nn.InstanceNorm3d,
-    )
-    if hasattr(nn, "RMSNorm"):
-        norm_types = norm_types + (nn.RMSNorm,)
-
-    norm_param_names = set()
-    for module_name, module in model.named_modules():
-        if isinstance(module, norm_types):
-            for param_name, _ in module.named_parameters(recurse=False):
-                full_name = f"{module_name}.{param_name}" if module_name else param_name
-                norm_param_names.add(full_name)
-
-    decay_params = []
-    no_decay_params = []
-    trainable_param_count = 0
-    for param_name, param in model.named_parameters():
-        if not param.requires_grad:
-            continue
-        trainable_param_count += 1
-        if param_name.endswith(".bias") or param_name in norm_param_names:
-            no_decay_params.append(param)
-        else:
-            decay_params.append(param)
-
-    if trainable_param_count == 0:
-        raise ValueError("no trainable parameters found")
-
-    return [
-        {"params": decay_params, "weight_decay": args.weight_decay},
-        {"params": no_decay_params, "weight_decay": 0.0},
-    ]
 
 
 def load_finetune_checkpoint(model, checkpoint_path, reset_head=False):
