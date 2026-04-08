@@ -80,6 +80,7 @@ srun --ntasks="${WORLD_SIZE}" --ntasks-per-node=1 --kill-on-bad-exit=1 \
       --decoder-d-ff 2048 \
       --decoder-num-layers 8 \
       --mask-ratio 0.75 \
+      --norm-pix-loss \
       --wd 0.05 \
       --lr "'"${LR}"'" \
       --min_lr 0.0 \
