@@ -7,12 +7,15 @@
 
 set -euo pipefail
 
-module load scicomp-python-env
+# module load scicomp-python-env
+source .venv/bin/activate
+module load triton/2025.1-gcc
+module load gcc
 
 PYTHON_BIN="${PYTHON_BIN:-python}"
 DATA_ROOT="${DATA_ROOT:-/scratch/shareddata/dldata/imagenet-1k-wds/imagenet-1k-wds/}"
 
-# main.py treats --batch-size as per-node batch when using --multiprocessing-distributed
+# main.py treats --batch-size as total batch when using --multiprocessing-distributed
 BATCH_SIZE="${BATCH_SIZE:-4096}"
 EPOCHS="${EPOCHS:-800}"
 WORKERS="${WORKERS:-20}"
@@ -28,8 +31,8 @@ WORLD_SIZE="${SLURM_NNODES:-1}"
 NODE_RANK="${SLURM_NODEID:-0}"
 MASTER_NODE="${MASTER_NODE:-$(scontrol show hostnames "${SLURM_NODELIST}" | head -n 1)}"
 
-# With this script's DDP launch style, global/effective batch = per-node batch * number_of_nodes.
-EFFECTIVE_BATCH_SIZE=$(( BATCH_SIZE * WORLD_SIZE ))
+# With this script's DDP launch style, global/effective batch = total batch / number_of_nodes.
+EFFECTIVE_BATCH_SIZE=$(( BATCH_SIZE / WORLD_SIZE ))
 
 LR=$("${PYTHON_BIN}" - <<PY
 base_lr = float(${BASE_LR})
