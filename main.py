@@ -462,8 +462,8 @@ def train(train_loader, model, optimizer, epoch, device, args):
         if i % args.print_freq == 0 and (not args.distributed or (args.distributed and args.rank == 0)):
             progress.display(i + 1)
 
-        if args.distributed:
-            losses.all_reduce()
+    if args.distributed:
+        losses.all_reduce()
             
     return losses.avg, current_lr
 
