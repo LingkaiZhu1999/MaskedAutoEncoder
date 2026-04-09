@@ -129,6 +129,8 @@ def main():
                       'which can slow down your training considerably! '
                       'You may see unexpected behavior when restarting '
                       'from checkpoints.')
+    
+    args.total_steps = args.epochs * (IMAGENET_TRAIN_SAMPLES // (args.batch_size * args.world_size))
 
     if args.gpu is not None:
         warnings.warn('You have chosen a specific GPU. This will completely '
@@ -161,23 +163,8 @@ def main():
         args.world_size = ngpus_per_node * args.world_size
         # Use torch.multiprocessing.spawn to launch distributed processes: the
         # main_worker process function
-
-        # args.batch_size is interpreted as per-node batch in this launch setup.
-        # Compute scheduler steps from the global batch size across all nodes.
-        world_size_for_batch = args.world_size if args.world_size > 0 else 1
-        global_batch_size = args.batch_size * (world_size_for_batch if args.distributed else 1)
-        args.train_batches = IMAGENET_TRAIN_SAMPLES // global_batch_size
-        args.total_steps = args.epochs * args.train_batches
-
         mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, args))
     else:
-
-        # args.batch_size is interpreted as per-node batch in this launch setup.
-        # Compute scheduler steps from the global batch size across all nodes.
-        world_size_for_batch = args.world_size if args.world_size > 0 else 1
-        global_batch_size = args.batch_size * (world_size_for_batch if args.distributed else 1)
-        args.train_batches = IMAGENET_TRAIN_SAMPLES // global_batch_size
-        args.total_steps = args.epochs * args.train_batches
         # Simply call main_worker function
         main_worker(args.gpu, ngpus_per_node, args)
 
